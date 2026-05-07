@@ -20,20 +20,35 @@
  *  4. Children (auth screen content).
  */
 
+import { Asset } from 'expo-asset';
 import { LinearGradient } from 'expo-linear-gradient';
 import React from 'react';
-import { Image, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
 import { tokens } from '@/theme';
 
-// `Image.resolveAssetSource` resolves the bundler-specific asset reference into
-// a string URL that survives `expo export --platform web` (the asset is hashed
-// and copied to dist/assets/...).
-const VIDEO_SRC =
-  Image.resolveAssetSource(
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    require('../../../assets/videos/auth-welcome.mp4'),
-  )?.uri ?? '';
+// Resolve the bundled asset to a public URL that works in `expo start` (dev
+// server) and after `expo export --platform web` (hashed file in dist/assets/).
+//
+// `Image.resolveAssetSource` is React-Native-only and is missing in
+// react-native-web — calling it crashes the production bundle. `expo-asset`
+// works on both. The fallbacks handle the case where Metro-web hands back a
+// plain URL string or an object literal directly.
+function resolveVideoUri(): string {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const mod: unknown = require('../../../assets/videos/auth-welcome.mp4');
+  if (typeof mod === 'string') return mod;
+  if (mod && typeof mod === 'object' && 'uri' in mod && typeof (mod as { uri: unknown }).uri === 'string') {
+    return (mod as { uri: string }).uri;
+  }
+  try {
+    return Asset.fromModule(mod).uri ?? '';
+  } catch {
+    return '';
+  }
+}
+
+const VIDEO_SRC = resolveVideoUri();
 
 export interface AuthVideoBackgroundProps {
   /** Overlay darkness — 0 (no overlay) to 1 (black). Default 0.55 */
