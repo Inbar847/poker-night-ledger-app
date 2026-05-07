@@ -1,0 +1,29 @@
+{
+  "permissions": {
+    "allow": [
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "WebFetch(domain:docs.expo.dev)",
+      "Bash(.venv/Scripts/python -m pytest tests/ --collect-only -q)",
+      "Bash(.venv/Scripts/python -m pytest tests/test_auth.py tests/test_health.py tests/test_games.py --collect-only -q)",
+      "Bash(python -m pytest tests/test_websocket.py -v)",
+      "Bash(python -m pytest -v)",
+      "Bash(python -m pytest -v --tb=short)",
+      "Bash(grep -E \"^jest$|jest-expo\")",
+      "Bash(npx tsc:*)",
+      "Bash(npx --yes tsc --noEmit)",
+      "Bash(node_modules/.bin/tsc --noEmit)",
+      "Bash(echo \"EXIT: $?\")",
+      "Bash(python -m pytest -q)",
+      "Bash(python -m pytest tests/ -x -q)",
+      "Bash(python -m pytest tests/ -x -q --timeout=30)",
+      "Bash(python -m pytest tests/test_games.py tests/test_auth.py -x)",
+      "Bash(python -m pytest tests/test_ledger.py tests/test_settlement.py tests/test_websocket.py -x)",
+      "Bash(python -m pytest tests/test_shortage.py -v)",
+      "Bash(python -m pytest tests/test_shortage.py -q)",
+      "Bash(python -m pytest tests/test_history.py tests/test_settlement.py::test_chip_rate_rounding tests/test_social.py::TestLeaderboardOrdering::test_no_games_user_ranked_below_positive_net -q)",
+      "Bash(python -m pytest tests/test_settlement.py tests/test_history.py tests/test_social.py -v)",
+      "Bash(python -m pytest --tb=short -q)",
+      "Bash(python -m pytest --tb=short -q --timeout=120)"
+    ]
+  }
+}

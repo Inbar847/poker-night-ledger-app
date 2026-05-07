@@ -1,0 +1,24 @@
+{
+  "expo": {
+    "name": "Poker Night Ledger",
+    "slug": "poker-night-ledger",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.yourname.pokernightledger"
+    },
+    "android": {
+      "package": "com.yourname.pokernightledger"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-video"
+    ],
+    "scheme": "pokernightledger",
+    "experiments": {
+      "typedRoutes": false
+    }
+  }
+}

@@ -1,0 +1,20 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: poker_ledger_db
+    environment:
+      POSTGRES_DB: poker_ledger
+      POSTGRES_USER: poker_user
+      POSTGRES_PASSWORD: poker_pass
+    ports:
+      - "55432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U poker_user -d poker_ledger"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres_data:

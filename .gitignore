@@ -1,0 +1,43 @@
+# OS
+.DS_Store
+Thumbs.db
+
+# Env files
+.env
+.env.*
+backend/.env
+backend/.env.*
+mobile/.env
+mobile/.env.*
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+
+# Backend
+backend/.pytest_cache/
+backend/.mypy_cache/
+backend/.ruff_cache/
+
+# Node
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Expo / React Native
+.expo/
+dist/
+build/
+web-build/
+
+# IDE
+.vscode/
+.idea/
