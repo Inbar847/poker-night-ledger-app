@@ -19,6 +19,12 @@
     "scheme": "pokernightledger",
     "experiments": {
       "typedRoutes": false
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "1290e7db-cb4a-4a6f-bc16-822ea92cf608"
+      }
     }
   }
 }
