@@ -81,6 +81,16 @@ async def _missing_final_stacks_handler(
     )
 
 
+@app.get("/")
+def root() -> dict[str, str]:
+    return {
+        "message": "Poker Night Ledger API is running",
+        "status": "ok",
+        "docs": "/docs",
+        "health": "/health",
+    }
+
+
 @app.get("/health")
 def health_check() -> dict[str, str]:
     return {"status": "ok"}
