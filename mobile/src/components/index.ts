@@ -74,3 +74,5 @@ export { Modal } from './overlays';
 export type { ModalProps } from './overlays';
 export { ConfirmDialog } from './overlays';
 export type { ConfirmDialogProps } from './overlays';
+export { AppDialog, AppDialogProvider } from './overlays';
+export type { AppDialogProps } from './overlays';

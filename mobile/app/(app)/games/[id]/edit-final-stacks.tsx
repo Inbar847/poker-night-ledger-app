@@ -9,7 +9,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { useState } from "react";
-import { Alert, StyleSheet, View } from "react-native";
+import { StyleSheet, View } from "react-native";
 
 import {
   Screen,
@@ -24,6 +24,7 @@ import {
 } from "@/components";
 
 import { useUpdateClosedFinalStack } from "@/features/game-edits/useGameEdits";
+import { notifyAsync } from "@/lib/confirm";
 import { queryKeys } from "@/lib/queryKeys";
 import * as gameService from "@/services/gameService";
 import * as ledgerService from "@/services/ledgerService";
@@ -61,7 +62,9 @@ function FinalStackRow({
   function handleSave() {
     const chips = parseFloat(chipsVal);
     if (isNaN(chips) || chips < 0) {
-      Alert.alert("Invalid", "Chips amount must be 0 or greater");
+      void notifyAsync("Invalid", "Chips amount must be 0 or greater", {
+        variant: "error",
+      });
       return;
     }
     updateMutation.mutate(
@@ -72,9 +75,10 @@ function FinalStackRow({
       {
         onSuccess: () => setEditing(false),
         onError: (err) =>
-          Alert.alert(
-            "Error",
+          void notifyAsync(
+            "Could not update final stack",
             err instanceof Error ? err.message : "Failed to update",
+            { variant: "error" },
           ),
       },
     );

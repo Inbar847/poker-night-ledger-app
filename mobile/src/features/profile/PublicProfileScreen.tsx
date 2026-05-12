@@ -18,7 +18,7 @@
  */
 
 import { useQuery } from "@tanstack/react-query";
-import { ActivityIndicator, Alert, Image, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Image, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
 import {
   useAcceptFriendRequest,
@@ -26,6 +26,7 @@ import {
   useRemoveFriend,
   useSendFriendRequest,
 } from "@/hooks/useFriends";
+import { confirmAsync } from "@/lib/confirm";
 import { queryKeys } from "@/lib/queryKeys";
 import { getPublicProfile, getUserStats } from "@/services/userService";
 import { useAuthStore } from "@/store/authStore";
@@ -99,15 +100,13 @@ function FriendshipButton({ userId }: { userId: string }) {
   return (
     <Pressable
       style={[styles.friendBtn, styles.friendsBtn]}
-      onPress={() => {
-        Alert.alert("Unfriend", "Remove this player from your friends?", [
-          { text: "Cancel", style: "cancel" },
-          {
-            text: "Unfriend",
-            style: "destructive",
-            onPress: () => friendshipId && removeFriend.mutate(friendshipId),
-          },
-        ]);
+      onPress={async () => {
+        const ok = await confirmAsync(
+          "Unfriend",
+          "Remove this player from your friends?",
+          { confirmLabel: "Unfriend", destructive: true },
+        );
+        if (ok && friendshipId) removeFriend.mutate(friendshipId);
       }}
       disabled={isMutating}
     >

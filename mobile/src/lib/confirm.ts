@@ -1,13 +1,34 @@
 /**
  * Cross-platform confirm/notify helpers.
  *
- * React Native's `Alert.alert` is iOS/Android only — on `react-native-web` it
- * is a no-op, which silently breaks any flow that wraps a mutation inside an
- * Alert confirm or surfaces errors via Alert. Use these helpers anywhere a
- * confirmation or a one-button message dialog is needed.
+ * Primary path: route requests through the `AppDialogProvider` mounted at the
+ * app root, which renders a themed in-app dialog on both native and web.
+ *
+ * Fallback path: if no provider is mounted (preview tooling, jest, or before
+ * the React tree has finished mounting), fall back to `Alert.alert` on native
+ * and `window.confirm` / `window.alert` on web. These ugly system dialogs are
+ * intentionally last-resort only so a missing provider never silently
+ * swallows a user-facing message.
  */
 
 import { Alert, Platform } from "react-native";
+
+import {
+  type DialogVariant,
+  getDialogPresenter,
+} from "./dialogController";
+
+export interface ConfirmOptions {
+  confirmLabel?: string;
+  cancelLabel?: string;
+  destructive?: boolean;
+  variant?: DialogVariant;
+}
+
+export interface NotifyOptions {
+  okLabel?: string;
+  variant?: DialogVariant;
+}
 
 /**
  * Ask the user to confirm an action.
@@ -16,7 +37,53 @@ import { Alert, Platform } from "react-native";
 export function confirmAsync(
   title: string,
   message: string,
-  options?: { confirmLabel?: string; cancelLabel?: string; destructive?: boolean },
+  options?: ConfirmOptions,
+): Promise<boolean> {
+  const presenter = getDialogPresenter();
+  if (presenter) {
+    return presenter({
+      mode: "confirm",
+      title,
+      message,
+      confirmLabel: options?.confirmLabel,
+      cancelLabel: options?.cancelLabel,
+      destructive: options?.destructive,
+      variant: options?.variant,
+    });
+  }
+  return platformConfirmFallback(title, message, options);
+}
+
+/**
+ * Show a one-button informational/error message.
+ * Resolves once the user dismisses it.
+ */
+export function notifyAsync(
+  title: string,
+  message: string,
+  options?: NotifyOptions,
+): Promise<void> {
+  const presenter = getDialogPresenter();
+  if (presenter) {
+    return presenter({
+      mode: "notify",
+      title,
+      message,
+      confirmLabel: options?.okLabel,
+      variant: options?.variant,
+    }).then(() => undefined);
+  }
+  return platformNotifyFallback(title, message, options);
+}
+
+// ---------------------------------------------------------------------------
+// Fallbacks — only reached when the AppDialogProvider is not mounted.
+// ---------------------------------------------------------------------------
+
+function platformConfirmFallback(
+  title: string,
+  message: string,
+  options?: ConfirmOptions,
 ): Promise<boolean> {
   const confirmLabel = options?.confirmLabel ?? "OK";
   const cancelLabel = options?.cancelLabel ?? "Cancel";
@@ -30,22 +97,29 @@ export function confirmAsync(
   }
 
   return new Promise<boolean>((resolve) => {
-    Alert.alert(title, message, [
-      { text: cancelLabel, style: "cancel", onPress: () => resolve(false) },
-      {
-        text: confirmLabel,
-        style: options?.destructive ? "destructive" : "default",
-        onPress: () => resolve(true),
-      },
-    ], { onDismiss: () => resolve(false) });
+    Alert.alert(
+      title,
+      message,
+      [
+        { text: cancelLabel, style: "cancel", onPress: () => resolve(false) },
+        {
+          text: confirmLabel,
+          style: options?.destructive ? "destructive" : "default",
+          onPress: () => resolve(true),
+        },
+      ],
+      { onDismiss: () => resolve(false) },
+    );
   });
 }
 
-/**
- * Show a one-button informational/error message.
- * Resolves once the user dismisses it.
- */
-export function notifyAsync(title: string, message: string): Promise<void> {
+function platformNotifyFallback(
+  title: string,
+  message: string,
+  options?: NotifyOptions,
+): Promise<void> {
+  const okLabel = options?.okLabel ?? "OK";
+
   if (Platform.OS === "web") {
     if (typeof window !== "undefined" && typeof window.alert === "function") {
       window.alert(`${title}\n\n${message}`);
@@ -54,7 +128,7 @@ export function notifyAsync(title: string, message: string): Promise<void> {
   }
 
   return new Promise<void>((resolve) => {
-    Alert.alert(title, message, [{ text: "OK", onPress: () => resolve() }], {
+    Alert.alert(title, message, [{ text: okLabel, onPress: () => resolve() }], {
       onDismiss: () => resolve(),
     });
   });

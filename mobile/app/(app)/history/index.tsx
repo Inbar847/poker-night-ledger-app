@@ -7,7 +7,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Stack, useRouter } from "expo-router";
 import {
-  Alert,
   FlatList,
   RefreshControl,
   StyleSheet,
@@ -25,6 +24,7 @@ import {
   Spacer,
   Text,
 } from "@/components";
+import { notifyAsync } from "@/lib/confirm";
 import * as gameService from "@/services/gameService";
 import { queryKeys } from "@/lib/queryKeys";
 import * as statsService from "@/services/statsService";
@@ -76,9 +76,10 @@ export default function HistoryScreen() {
       void queryClient.invalidateQueries({ queryKey: queryKeys.games(userId) });
     },
     onError: (err) => {
-      Alert.alert(
-        "Error",
+      void notifyAsync(
+        "Could not hide game",
         err instanceof Error ? err.message : "Failed to hide game",
+        { variant: "error" },
       );
     },
   });

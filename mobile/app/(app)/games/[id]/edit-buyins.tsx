@@ -12,7 +12,6 @@ import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import {
-  Alert,
   Pressable,
   StyleSheet,
   View,
@@ -40,6 +39,7 @@ import {
   useUpdateClosedBuyIn,
 } from "@/features/game-edits/useGameEdits";
 import { cashToChips, chipsToCash } from "@/lib/buyInAutofill";
+import { confirmAsync, notifyAsync } from "@/lib/confirm";
 import { queryKeys } from "@/lib/queryKeys";
 import * as gameService from "@/services/gameService";
 import * as ledgerService from "@/services/ledgerService";
@@ -98,11 +98,15 @@ function EditBuyInRow({
     const cash = parseFloat(cashVal);
     const chips = parseFloat(chipsVal);
     if (isNaN(cash) || cash <= 0) {
-      Alert.alert("Invalid", "Cash amount must be greater than 0");
+      void notifyAsync("Invalid", "Cash amount must be greater than 0", {
+        variant: "error",
+      });
       return;
     }
     if (isNaN(chips) || chips < 0) {
-      Alert.alert("Invalid", "Chips amount must be 0 or greater");
+      void notifyAsync("Invalid", "Chips amount must be 0 or greater", {
+        variant: "error",
+      });
       return;
     }
     updateMutation.mutate(
@@ -116,34 +120,30 @@ function EditBuyInRow({
       {
         onSuccess: () => setEditing(false),
         onError: (err) =>
-          Alert.alert(
-            "Error",
+          void notifyAsync(
+            "Could not update buy-in",
             err instanceof Error ? err.message : "Failed to update",
+            { variant: "error" },
           ),
       },
     );
   }
 
-  function handleDelete() {
-    Alert.alert(
+  async function handleDelete() {
+    const ok = await confirmAsync(
       "Delete Buy-In",
       `Delete ${participantName}'s ${buyIn.buy_in_type} buy-in of ${currencySymbol(currency)}${parseFloat(buyIn.cash_amount).toFixed(2)}?`,
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Delete",
-          style: "destructive",
-          onPress: () =>
-            deleteMutation.mutate(buyIn.id, {
-              onError: (err) =>
-                Alert.alert(
-                  "Error",
-                  err instanceof Error ? err.message : "Failed to delete",
-                ),
-            }),
-        },
-      ],
+      { confirmLabel: "Delete", destructive: true },
     );
+    if (!ok) return;
+    deleteMutation.mutate(buyIn.id, {
+      onError: (err) =>
+        void notifyAsync(
+          "Could not delete buy-in",
+          err instanceof Error ? err.message : "Failed to delete",
+          { variant: "error" },
+        ),
+    });
   }
 
   const isPending = updateMutation.isPending || deleteMutation.isPending;
@@ -325,9 +325,10 @@ function AddBuyInForm({
           setSelectedParticipant(null);
         },
         onError: (err) =>
-          Alert.alert(
-            "Error",
+          void notifyAsync(
+            "Could not add buy-in",
             err instanceof Error ? err.message : "Failed to add buy-in",
+            { variant: "error" },
           ),
       },
     );

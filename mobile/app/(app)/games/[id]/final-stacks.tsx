@@ -11,7 +11,7 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { useMemo, useState } from "react";
-import { Alert, StyleSheet, View } from "react-native";
+import { StyleSheet, View } from "react-native";
 
 import {
   Text,
@@ -28,6 +28,7 @@ import {
   ChipCount,
   currencySymbol,
 } from "@/components";
+import { notifyAsync } from "@/lib/confirm";
 
 import { queryKeys } from "@/lib/queryKeys";
 import * as gameService from "@/services/gameService";
@@ -161,7 +162,11 @@ export default function FinalStacksScreen() {
     );
 
     if (entries.length === 0) {
-      Alert.alert("No chips entered", "Enter chip counts for at least one participant.");
+      void notifyAsync(
+        "No chips entered",
+        "Enter chip counts for at least one participant.",
+        { variant: "info" },
+      );
       return;
     }
 

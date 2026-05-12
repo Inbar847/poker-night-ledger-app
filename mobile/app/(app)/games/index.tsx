@@ -8,7 +8,7 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Stack, useRouter } from "expo-router";
-import { Alert, FlatList, StyleSheet, View } from "react-native";
+import { FlatList, StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import {
@@ -27,6 +27,7 @@ import {
   FeltBackground,
 } from "@/components";
 import { useUnreadCount } from "@/hooks/useNotifications";
+import { notifyAsync } from "@/lib/confirm";
 import { queryKeys } from "@/lib/queryKeys";
 import * as gameService from "@/services/gameService";
 import * as userService from "@/services/userService";
@@ -113,9 +114,10 @@ export default function DashboardScreen() {
       void queryClient.invalidateQueries({ queryKey: queryKeys.history(userId) });
     },
     onError: (err) => {
-      Alert.alert(
-        "Error",
+      void notifyAsync(
+        "Could not hide game",
         err instanceof Error ? err.message : "Failed to hide game",
+        { variant: "error" },
       );
     },
   });

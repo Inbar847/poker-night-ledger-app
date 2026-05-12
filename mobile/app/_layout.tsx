@@ -14,6 +14,7 @@ import { StatusBar } from "react-native";
 import { useEffect } from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 
+import { AppDialogProvider } from "@/components";
 import { queryClient } from "@/lib/queryClient";
 import { useAuthStore } from "@/store/authStore";
 import { tokens } from "@/theme";
@@ -31,15 +32,17 @@ export default function RootLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <QueryClientProvider client={queryClient}>
-        <StatusBar barStyle="light-content" />
-        <AuthBootstrap />
-        <Stack
-          screenOptions={{
-            headerShown: false,
-            contentStyle: { backgroundColor: tokens.color.bg.primary },
-            animation: "fade",
-          }}
-        />
+        <AppDialogProvider>
+          <StatusBar barStyle="light-content" />
+          <AuthBootstrap />
+          <Stack
+            screenOptions={{
+              headerShown: false,
+              contentStyle: { backgroundColor: tokens.color.bg.primary },
+              animation: "fade",
+            }}
+          />
+        </AppDialogProvider>
       </QueryClientProvider>
     </GestureHandlerRootView>
   );

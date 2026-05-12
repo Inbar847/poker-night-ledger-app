@@ -9,7 +9,6 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
   Modal,
   Pressable,
   StyleSheet,
@@ -19,6 +18,7 @@ import {
 } from "react-native";
 
 import { currencySymbol } from "@/components";
+import { confirmAsync, notifyAsync } from "@/lib/confirm";
 import { queryKeys } from "@/lib/queryKeys";
 import * as gameService from "@/services/gameService";
 import { tokens } from "@/theme";
@@ -61,9 +61,10 @@ export default function CashoutModal({
       onSuccess();
     },
     onError: (err) => {
-      Alert.alert(
+      void notifyAsync(
         "Cash Out Failed",
         err instanceof Error ? err.message : "Something went wrong",
+        { variant: "error" },
       );
     },
   });
@@ -105,19 +106,13 @@ export default function CashoutModal({
           <Pressable
             style={[s.btn, s.btnPrimary, (!canSubmit || mutation.isPending) && s.btnDisabled]}
             disabled={!canSubmit || mutation.isPending}
-            onPress={() => {
-              Alert.alert(
+            onPress={async () => {
+              const ok = await confirmAsync(
                 "Confirm Cash Out",
                 `Leave the game with ${chips} chips (${currencySymbol(currency)}${cashValue ?? "?"})? This cannot be undone.`,
-                [
-                  { text: "Cancel", style: "cancel" },
-                  {
-                    text: "Cash Out",
-                    style: "destructive",
-                    onPress: () => mutation.mutate(),
-                  },
-                ],
+                { confirmLabel: "Cash Out", destructive: true },
               );
+              if (ok) mutation.mutate();
             }}
           >
             {mutation.isPending ? (
