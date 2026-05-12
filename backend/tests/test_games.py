@@ -388,3 +388,82 @@ def test_add_guest_name_is_stripped(client: TestClient):
     )
     assert resp.status_code == 201
     assert resp.json()["guest_name"] == "Bob"
+
+
+# ---------------------------------------------------------------------------
+# Start game
+# ---------------------------------------------------------------------------
+
+
+def test_start_game_dealer_success(client: TestClient):
+    """Dealer can start a lobby game; status transitions to active."""
+    token = _register_and_login(client, "dealer@example.com")
+    game = _create_game(client, token).json()
+    assert game["status"] == "lobby"
+
+    resp = client.post(f"/games/{game['id']}/start", headers=_auth(token))
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["id"] == game["id"]
+    assert body["status"] == "active"
+
+
+def test_start_game_persists_active_state(client: TestClient):
+    """After start, GET /games/{id} reflects active state."""
+    token = _register_and_login(client, "dealer@example.com")
+    game_id = _create_game(client, token).json()["id"]
+    client.post(f"/games/{game_id}/start", headers=_auth(token))
+
+    resp = client.get(f"/games/{game_id}", headers=_auth(token))
+    assert resp.status_code == 200
+    assert resp.json()["status"] == "active"
+
+
+def test_start_game_non_dealer_forbidden(client: TestClient):
+    """A regular player participant cannot start the game."""
+    dealer_token = _register_and_login(client, "dealer@example.com")
+    player_token = _register_and_login(client, "player@example.com")
+    game = _create_game(client, dealer_token).json()
+    client.post(
+        "/games/join-by-token",
+        json={"token": game["invite_token"]},
+        headers=_auth(player_token),
+    )
+
+    resp = client.post(f"/games/{game['id']}/start", headers=_auth(player_token))
+    assert resp.status_code == 403
+
+
+def test_start_game_non_participant_forbidden(client: TestClient):
+    """A user who is not in the game cannot start it."""
+    dealer_token = _register_and_login(client, "dealer@example.com")
+    outsider_token = _register_and_login(client, "outsider@example.com")
+    game_id = _create_game(client, dealer_token).json()["id"]
+
+    resp = client.post(f"/games/{game_id}/start", headers=_auth(outsider_token))
+    assert resp.status_code == 403
+
+
+def test_start_game_requires_auth(client: TestClient):
+    token = _register_and_login(client, "dealer@example.com")
+    game_id = _create_game(client, token).json()["id"]
+    resp = client.post(f"/games/{game_id}/start")
+    assert resp.status_code == 401
+
+
+def test_start_game_not_found(client: TestClient):
+    token = _register_and_login(client, "dealer@example.com")
+    fake_id = "00000000-0000-0000-0000-000000000000"
+    resp = client.post(f"/games/{fake_id}/start", headers=_auth(token))
+    assert resp.status_code == 404
+
+
+def test_start_game_already_active_returns_400(client: TestClient):
+    """Starting an already-active game must fail with 400."""
+    token = _register_and_login(client, "dealer@example.com")
+    game_id = _create_game(client, token).json()["id"]
+    client.post(f"/games/{game_id}/start", headers=_auth(token))
+
+    resp = client.post(f"/games/{game_id}/start", headers=_auth(token))
+    assert resp.status_code == 400
+    assert "lobby" in resp.json()["detail"].lower() or "active" in resp.json()["detail"].lower()

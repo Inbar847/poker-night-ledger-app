@@ -14,7 +14,6 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { useState } from "react";
 import {
-  Alert,
   Modal,
   Pressable,
   StyleSheet,
@@ -22,6 +21,7 @@ import {
 } from "react-native";
 import * as Clipboard from "expo-clipboard";
 import { ApiError } from "@/lib/apiClient";
+import { confirmAsync, notifyAsync } from "@/lib/confirm";
 import type { Game, MissingFinalStack, ShortageStrategy } from "@/types/game";
 
 import {
@@ -126,20 +126,14 @@ function ExpenseRow({
         <Pressable
           style={subStyles.deleteBtn}
           hitSlop={8}
-          onPress={() =>
-            Alert.alert(
+          onPress={async () => {
+            const ok = await confirmAsync(
               "Delete Expense",
               `Delete "${expense.title}"?`,
-              [
-                { text: "Cancel", style: "cancel" },
-                {
-                  text: "Delete",
-                  style: "destructive",
-                  onPress: () => onDelete(expense.id),
-                },
-              ],
-            )
-          }
+              { confirmLabel: "Delete", destructive: true },
+            );
+            if (ok) onDelete(expense.id);
+          }}
         >
           <Text variant="captionBold" color="negative">✕</Text>
         </Pressable>
@@ -400,15 +394,30 @@ export default function GameScreen() {
     mutationFn: () => gameService.startGame(id),
     onSuccess: (updated) => {
       queryClient.setQueryData(queryKeys.game(id), updated);
+      void queryClient.invalidateQueries({ queryKey: queryKeys.game(id) });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.participants(id) });
       void queryClient.invalidateQueries({ queryKey: queryKeys.games(userId) });
     },
     onError: (err) => {
-      Alert.alert(
-        "Error",
+      void notifyAsync(
+        "Could not start game",
         err instanceof Error ? err.message : "Failed to start game",
       );
     },
   });
+
+  async function handleStartGame() {
+    if (startMutation.isPending) return;
+    const ok = await confirmAsync(
+      "Start Game",
+      "Start the game now? Buy-ins can be entered once it is active.",
+      { confirmLabel: "Start" },
+    );
+    if (!ok) return;
+    startMutation.mutate();
+  }
+
+  const [closeChecking, setCloseChecking] = useState(false);
 
   const closeMutation = useMutation({
     mutationFn: (strategy?: ShortageStrategy) =>
@@ -418,8 +427,12 @@ export default function GameScreen() {
       if ("status" in result && (result as Game).status === "closed") {
         queryClient.setQueryData(queryKeys.game(id), result);
       }
-      void queryClient.invalidateQueries({ queryKey: queryKeys.games(userId) });
       void queryClient.invalidateQueries({ queryKey: queryKeys.game(id) });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.participants(id) });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.finalStacks(id) });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.settlement(id) });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.games(userId) });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.history(userId) });
     },
     onError: (err) => {
       setShortageModal({ visible: false, amount: "0" });
@@ -427,47 +440,44 @@ export default function GameScreen() {
       if (err instanceof ApiError && err.data?.missing_final_stacks) {
         const missing = err.data.missing_final_stacks as MissingFinalStack[];
         const names = missing.map((m) => m.display_name).join(", ");
-        Alert.alert(
+        void notifyAsync(
           "Cannot Close Game",
           `Missing final chip counts for:\n${names}`,
         );
         return;
       }
 
-      Alert.alert(
-        "Error",
+      void notifyAsync(
+        "Could not close game",
         err instanceof Error ? err.message : "Failed to close game",
       );
     },
   });
 
   async function handleCloseGame() {
-    Alert.alert(
+    if (closeMutation.isPending || closeChecking) return;
+    const ok = await confirmAsync(
       "Close Game",
       "Close the game and generate settlement? This cannot be undone.",
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Close",
-          style: "destructive",
-          onPress: async () => {
-            try {
-              const preview = await gameService.getShortagePreview(id);
-              if (preview.has_shortage) {
-                setShortageModal({
-                  visible: true,
-                  amount: preview.shortage_amount,
-                });
-              } else {
-                closeMutation.mutate(undefined);
-              }
-            } catch {
-              closeMutation.mutate(undefined);
-            }
-          },
-        },
-      ],
+      { confirmLabel: "Close", destructive: true },
     );
+    if (!ok) return;
+    setCloseChecking(true);
+    try {
+      const preview = await gameService.getShortagePreview(id);
+      if (preview.has_shortage) {
+        setShortageModal({
+          visible: true,
+          amount: preview.shortage_amount,
+        });
+      } else {
+        closeMutation.mutate(undefined);
+      }
+    } catch {
+      closeMutation.mutate(undefined);
+    } finally {
+      setCloseChecking(false);
+    }
   }
 
   const inviteMutation = useMutation({
@@ -477,8 +487,8 @@ export default function GameScreen() {
       setTokenCopied(false);
     },
     onError: (err) => {
-      Alert.alert(
-        "Error",
+      void notifyAsync(
+        "Could not generate invite link",
         err instanceof Error ? err.message : "Failed to generate invite link",
       );
     },
@@ -500,8 +510,8 @@ export default function GameScreen() {
       void queryClient.invalidateQueries({ queryKey: queryKeys.expenses(id) });
     },
     onError: (err) => {
-      Alert.alert(
-        "Error",
+      void notifyAsync(
+        "Could not delete expense",
         err instanceof Error ? err.message : "Failed to delete expense",
       );
     },
@@ -807,8 +817,8 @@ export default function GameScreen() {
                 variant="destructive"
                 size="lg"
                 fullWidth
-                loading={closeMutation.isPending}
-                disabled={closeMutation.isPending}
+                loading={closeMutation.isPending || closeChecking}
+                disabled={closeMutation.isPending || closeChecking}
                 onPress={() => void handleCloseGame()}
               />
             </Section>
@@ -996,15 +1006,7 @@ export default function GameScreen() {
                 fullWidth
                 loading={startMutation.isPending}
                 disabled={startMutation.isPending}
-                onPress={() => {
-                  Alert.alert("Start Game", "Start the game now?", [
-                    { text: "Cancel", style: "cancel" },
-                    {
-                      text: "Start",
-                      onPress: () => startMutation.mutate(),
-                    },
-                  ]);
-                }}
+                onPress={() => void handleStartGame()}
               />
             </Section>
           </View>
